@@ -1,0 +1,20 @@
+---
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pcfnorm/rootfs
+
+params:
+  OPSMAN_DOMAIN_OR_IP_ADDRESS:
+  OPS_MGR_USR:
+  OPS_MGR_PWD:
+  PRODUCT_NAME:
+
+inputs:
+  - name: azure-tile-pipelines
+
+run:
+  path: azure-tile-pipelines/tasks/unstage-product/task.sh

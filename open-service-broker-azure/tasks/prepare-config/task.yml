@@ -1,0 +1,40 @@
+---
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pcfnorm/rootfs
+
+params:
+  AZURE_ENVIRONMENT: AzurePublicCloud
+  AZURE_TENANT_ID:
+  AZURE_SUBSCRIPTION_ID:
+  AZURE_CLIENT_ID:
+  AZURE_CLIENT_SECRET:
+  ASYNC_REDIS_DB:
+  ASYNC_REDIS_ENABLE_TLS:
+  ASYNC_REDIS_HOST:
+  ASYNC_REDIS_PASSWORD:
+  ASYNC_REDIS_PORT:
+  STORAGE_REDIS_DB:
+  STORAGE_REDIS_ENABLE_TLS:
+  STORAGE_REDIS_HOST:
+  STORAGE_REDIS_PASSWORD:
+  STORAGE_REDIS_PORT:
+  LOG_LEVEL: INFO
+  MIN_STABILITY: PREVIEW
+  CRYPTO_AES256_KEY:
+  NETWORK:
+  SINGLETON_AVAILABILITY_ZONE:
+  OTHER_AVAILABILITY_ZONE:
+
+inputs:
+  - name: azure-tile-pipelines
+
+outputs:
+  - name: product-config
+
+run:
+  path: azure-tile-pipelines/open-service-broker-azure/tasks/prepare-config/task.sh

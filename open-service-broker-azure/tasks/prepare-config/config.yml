@@ -1,0 +1,60 @@
+---
+product-name: azure-open-service-broker-pcf
+product-properties:
+  .properties.azure_environment:
+    value: ((azure_environment))
+  .properties.azure_tenant_id:
+    value: ((azure_tenant_id))
+  .properties.azure_subscription_id:
+    value: ((azure_subscription_id))
+  .properties.azure_client_id:
+    value: ((azure_client_id))
+  .properties.azure_client_secret:
+    value:
+      secret: ((azure_client_secret))
+  .properties.async_redis_db:
+    value: ((async_redis_db))
+  .properties.async_redis_enable_tls:
+    value: ((async_redis_enable_tls))
+  .properties.async_redis_host:
+    value: ((async_redis_host))
+  .properties.async_redis_password:
+    value: ((async_redis_password))
+  .properties.async_redis_port:
+    value: ((async_redis_port))
+  .properties.storage_redis_db:
+    value: ((storage_redis_db))
+  .properties.storage_redis_enable_tls:
+    value: ((storage_redis_enable_tls))
+  .properties.storage_redis_host:
+    value: ((storage_redis_host))
+  .properties.storage_redis_password:
+    value: ((storage_redis_password))
+  .properties.storage_redis_port:
+    value: ((storage_redis_port))
+  .properties.log_level:
+    value: ((log_level))
+  .properties.min_stability:
+    value: ((min_stability))
+  .properties.crypto_encryption_scheme:
+    value: AES256
+  .properties.crypto_aes256_key:
+    value:
+      secret: ((crypto_aes256_key))
+  .properties.open_service_broker_azure_enable_global_access_to_plans:
+    value: true
+  .properties.allow_paid_service_plans:
+    value: true
+  .properties.apply_open_security_group:
+    value: true
+  .properties.org:
+    value: system
+  .properties.space:
+    value: open-service-broker-azure-space
+network-properties:
+  network:
+    name: ((network))
+  other_availability_zones:
+  - name: ((other_availability_zone))
+  singleton_availability_zone:
+    name: ((singleton_availability_zone))
