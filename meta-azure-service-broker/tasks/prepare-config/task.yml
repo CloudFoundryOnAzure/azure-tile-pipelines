@@ -1,0 +1,32 @@
+---
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pcfnorm/rootfs
+
+params:
+  AZURE_ENVIRONMENT: AzurePublicCloud
+  AZURE_TENANT_ID:
+  AZURE_SUBSCRIPTION_ID:
+  AZURE_CLIENT_ID:
+  AZURE_CLIENT_SECRET:
+  AZURE_BROKER_DATABASE_SERVER:
+  AZURE_BROKER_DATABASE_NAME:
+  AZURE_BROKER_DATABASE_USER:
+  AZURE_BROKER_DATABASE_PASSWORD:
+  AZURE_BROKER_DATABASE_ENCRYPTION_KEY:
+  NETWORK:
+  SINGLETON_AVAILABILITY_ZONE:
+  OTHER_AVAILABILITY_ZONE:
+
+inputs:
+  - name: azure-tile-pipelines
+
+outputs:
+  - name: product-config
+
+run:
+  path: azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/task.sh
