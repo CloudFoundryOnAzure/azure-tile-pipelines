@@ -66,14 +66,14 @@ jobs:
   serial_groups: [opsman]
   plan:
   - aggregate:
-    - get: azure-tile-pipelines
-    - get: pcf-pipelines
     - get: pivnet-product
       resource: pivnet-masb
-      trigger: true
       params:
         globs:
         - "azure-service-broker*.pivotal"
+      trigger: true
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
 
   - task: upload-tile
     file: pcf-pipelines/tasks/upload-product-and-stemcell/task.yml
@@ -106,10 +106,15 @@ jobs:
   serial_groups: [full]
   plan:
   - aggregate:
-    - get: azure-tile-pipelines
-    - get: pcf-pipelines
-      passed: [upload-masb]
+    - get: pivnet-product
+      resource: pivnet-masb
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
       trigger: true
+      passed: [upload-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
 
   - task: prepare-config
     file: azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/task.yml
@@ -146,10 +151,15 @@ jobs:
 
   plan:
   - aggregate:
-    - get: azure-tile-pipelines
-    - get: pcf-pipelines
-      passed: [configure-masb]
+    - get: pivnet-product
+      resource: pivnet-masb
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
       trigger: true
+      passed: [configure-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
 
   - task: deploy-masb
     file: pcf-pipelines/tasks/apply-changes/task.yml
@@ -172,10 +182,15 @@ jobs:
 
   plan:
   - aggregate:
-    - get: azure-tile-pipelines
-    - get: pcf-pipelines
-      passed: [deploy-masb]
+    - get: pivnet-product
+      resource: pivnet-masb
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
       trigger: true
+      passed: [deploy-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
 
   - <<: *unstage-masb
   - <<: *delete-masb
