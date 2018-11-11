@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cp azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/config.yml product-config/
+cp azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/config-${PRODUCT_VERSION}.yml product-config/config.yml
 cat >> product-config/vars.yml << EOF
 ---
 environment: ${AZURE_ENVIRONMENT}

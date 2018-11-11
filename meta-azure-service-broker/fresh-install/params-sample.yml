@@ -1,4 +1,4 @@
-masb_major_minor_version: ^1\.[0-9]+\.0$
+masb_version: 1.10.0
 
 # Opsman Settings
 opsman_domain_or_ip_address:

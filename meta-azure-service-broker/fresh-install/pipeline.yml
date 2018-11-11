@@ -38,7 +38,7 @@ resources:
   source:
     api_token: {{pivnet_token}}
     product_slug: azure-service-broker
-    product_version: {{masb_major_minor_version}}
+    product_version: {{masb_version}}
     sort_by: semver
 
 shared:
@@ -59,7 +59,7 @@ shared:
     OPS_MGR_USR: {{opsman_admin_username}}
     OPS_MGR_PWD: {{opsman_admin_password}}
     PRODUCT_NAME: azure-service-broker
-    PRODUCT_VERSION: 1.10.0
+    PRODUCT_VERSION: {{masb_version}}
 
 jobs:
 - name: upload-masb
@@ -119,6 +119,7 @@ jobs:
   - task: prepare-config
     file: azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/task.yml
     params:
+      PRODUCT_VERSION:                      {{masb_version}}
       AZURE_ENVIRONMENT:                    {{azure_environment}}
       AZURE_TENANT_ID:                      {{azure_tenant_id}}
       AZURE_SUBSCRIPTION_ID:                {{azure_subscription_id}}
