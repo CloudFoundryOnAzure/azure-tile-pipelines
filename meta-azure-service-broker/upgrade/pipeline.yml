@@ -1,6 +1,7 @@
 groups:
 - name: all
   jobs:
+  - cleanup-masb
   - upload-masb-old
   - configure-masb-old
   - deploy-masb-old
@@ -73,9 +74,38 @@ shared:
     PRODUCT_NAME: azure-service-broker
     PRODUCT_VERSION: {{masb_new_version}}
 
+- &apply-changes
+  task: apply-changes
+  file: pcf-pipelines/tasks/apply-changes/task.yml
+  params:
+    OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+    OPSMAN_USERNAME: {{opsman_admin_username}}
+    OPSMAN_PASSWORD: {{opsman_admin_password}}
+    OPSMAN_CLIENT_ID: ""
+    OPSMAN_CLIENT_SECRET: ""
+    PRODUCT_NAME: azure-service-broker
+
 jobs:
+- name: cleanup-masb
+  serial: true
+  max_in_flight: 1
+
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - <<: *unstage-masb
+  - <<: *apply-changes
+  - <<: *delete-masb
+
 - name: upload-masb-old
-  serial_groups: [opsman]
   plan:
   - aggregate:
     - get: pivnet-product
@@ -110,12 +140,12 @@ jobs:
       OPSMAN_PASSWORD: {{opsman_admin_password}}
     on_failure:
       do:
+        - <<: *unstage-masb
         - <<: *delete-masb
 
 - name: configure-masb-old
   serial: true
   max_in_flight: 1
-  serial_groups: [full]
   plan:
   - aggregate:
     - get: pivnet-product
@@ -160,7 +190,6 @@ jobs:
 - name: deploy-masb-old
   serial: true
   max_in_flight: 1
-  serial_groups: [full]
 
   plan:
   - aggregate:
@@ -174,22 +203,13 @@ jobs:
     - get: pcf-pipelines
     - get: azure-tile-pipelines
 
-  - task: deploy-masb
-    file: pcf-pipelines/tasks/apply-changes/task.yml
-    params:
-      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
-      OPSMAN_USERNAME: {{opsman_admin_username}}
-      OPSMAN_PASSWORD: {{opsman_admin_password}}
-      OPSMAN_CLIENT_ID: ""
-      OPSMAN_CLIENT_SECRET: ""
-      PRODUCT_NAME: azure-service-broker
+  - <<: *apply-changes
     on_failure:
       do:
         - <<: *unstage-masb
         - <<: *delete-masb
 
 - name: upload-masb-new
-  serial_groups: [opsman]
   plan:
   - aggregate:
     - get: pivnet-product
@@ -224,12 +244,12 @@ jobs:
       OPSMAN_PASSWORD: {{opsman_admin_password}}
     on_failure:
       do:
+        - <<: *unstage-masb
         - <<: *delete-masb
 
 - name: configure-masb-new
   serial: true
   max_in_flight: 1
-  serial_groups: [full]
   plan:
   - aggregate:
     - get: pivnet-product
@@ -274,7 +294,6 @@ jobs:
 - name: deploy-masb-new
   serial: true
   max_in_flight: 1
-  serial_groups: [full]
 
   plan:
   - aggregate:
@@ -288,15 +307,7 @@ jobs:
     - get: pcf-pipelines
     - get: azure-tile-pipelines
 
-  - task: deploy-masb
-    file: pcf-pipelines/tasks/apply-changes/task.yml
-    params:
-      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
-      OPSMAN_USERNAME: {{opsman_admin_username}}
-      OPSMAN_PASSWORD: {{opsman_admin_password}}
-      OPSMAN_CLIENT_ID: ""
-      OPSMAN_CLIENT_SECRET: ""
-      PRODUCT_NAME: azure-service-broker
+  - <<: *apply-changes
     on_failure:
       do:
         - <<: *unstage-masb
@@ -305,7 +316,6 @@ jobs:
 - name: delete-masb
   serial: true
   max_in_flight: 1
-  serial_groups: [full]
 
   plan:
   - aggregate:
@@ -320,4 +330,5 @@ jobs:
     - get: azure-tile-pipelines
 
   - <<: *unstage-masb
+  - <<: *apply-changes
   - <<: *delete-masb

@@ -14,12 +14,4 @@ om-linux \
   unstage-product \
   --product-name $PRODUCT_NAME
 
-om-linux \
-  --target https://$OPSMAN_DOMAIN_OR_IP_ADDRESS \
-  --username "$OPS_MGR_USR" \
-  --password "$OPS_MGR_PWD" \
-  --skip-ssl-validation \
-  apply-changes \
-  --skip-unchanged-products
-
 exit 0
