@@ -1,0 +1,25 @@
+masb_major_minor_version: ^1\.[0-9]+\.0$
+
+# Opsman Settings
+opsman_domain_or_ip_address:
+opsman_admin_username:
+opsman_admin_password:
+
+# Pivnet token for downloading resources from Pivnet. Find this token at https://network.pivotal.io/users/dashboard/edit-profile
+pivnet_token:
+
+azure_environment: AzureCloud
+azure_tenant_id:
+azure_subscription_id:
+azure_client_id:
+azure_client_secret:
+
+azure_broker_database_server:
+azure_broker_database_name:
+azure_broker_database_user:
+azure_broker_database_password:
+azure_broker_database_encryption_key:
+
+network:
+singleton_availability_zone:
+other_availability_zone:
