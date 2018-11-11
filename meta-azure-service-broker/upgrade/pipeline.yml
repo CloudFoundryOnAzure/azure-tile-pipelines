@@ -1,0 +1,323 @@
+groups:
+- name: all
+  jobs:
+  - upload-masb-old
+  - configure-masb-old
+  - deploy-masb-old
+  - upload-masb-new
+  - configure-masb-new
+  - deploy-masb-new
+  - delete-masb
+
+resource_types:
+- name: pivnet
+  type: docker-image
+  source:
+    repository: pivotalcf/pivnet-resource
+    tag: latest-final
+
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: azure-tile-pipelines
+  type: git
+  source:
+    uri: https://github.com/CloudFoundryOnAzure/azure-tile-pipelines
+    branch: master
+
+- name: pcf-pipelines
+  type: git
+  source:
+    uri: https://github.com/CloudFoundryOnAzure/pcf-pipelines
+    branch: master
+
+- name: pivnet-masb-old
+  type: pivnet
+  check_every: 4h
+  source:
+    api_token: {{pivnet_token}}
+    product_slug: azure-service-broker
+    product_version: {{masb_old_version}}
+    sort_by: semver
+
+- name: pivnet-masb-new
+  type: pivnet
+  check_every: 4h
+  source:
+    api_token: {{pivnet_token}}
+    product_slug: azure-service-broker
+    product_version: {{masb_new_version}}
+    sort_by: semver
+
+shared:
+- &unstage-masb
+  task: unstage-masb
+  file: azure-tile-pipelines/tasks/unstage-product/task.yml
+  params:
+    OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+    OPS_MGR_USR: {{opsman_admin_username}}
+    OPS_MGR_PWD: {{opsman_admin_password}}
+    PRODUCT_NAME: azure-service-broker
+
+- &delete-masb
+  task: delete-masb
+  file: azure-tile-pipelines/tasks/delete-product/task.yml
+  params:
+    OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+    OPS_MGR_USR: {{opsman_admin_username}}
+    OPS_MGR_PWD: {{opsman_admin_password}}
+    PRODUCT_NAME: azure-service-broker
+    PRODUCT_VERSION: {{masb_new_version}}
+
+jobs:
+- name: upload-masb-old
+  serial_groups: [opsman]
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-old
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: upload-tile
+    file: pcf-pipelines/tasks/upload-product-and-stemcell/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      OPS_MGR_USR: {{opsman_admin_username}}
+      OPS_MGR_PWD: {{opsman_admin_password}}
+      PIVNET_API_TOKEN: {{pivnet_token}}
+      IAAS: "azure"
+      NO_PROXY: ""
+      OM_IP: ""
+
+  - task: stage-tile
+    file: pcf-pipelines/tasks/stage-product/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *delete-masb
+
+- name: configure-masb-old
+  serial: true
+  max_in_flight: 1
+  serial_groups: [full]
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-old
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+      passed: [upload-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: prepare-config
+    file: azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/task.yml
+    params:
+      PRODUCT_VERSION:                      {{masb_old_version}}
+      AZURE_ENVIRONMENT:                    {{azure_environment}}
+      AZURE_TENANT_ID:                      {{azure_tenant_id}}
+      AZURE_SUBSCRIPTION_ID:                {{azure_subscription_id}}
+      AZURE_CLIENT_ID:                      {{azure_client_id}}
+      AZURE_CLIENT_SECRET:                  {{azure_client_secret}}
+      AZURE_BROKER_DATABASE_SERVER:         {{azure_broker_database_server}}
+      AZURE_BROKER_DATABASE_NAME:           {{azure_broker_database_name}}
+      AZURE_BROKER_DATABASE_USER:           {{azure_broker_database_user}}
+      AZURE_BROKER_DATABASE_PASSWORD:       {{azure_broker_database_password}}
+      AZURE_BROKER_DATABASE_ENCRYPTION_KEY: {{azure_broker_database_encryption_key}}
+      NETWORK:                              {{network}}
+      SINGLETON_AVAILABILITY_ZONE:          {{singleton_availability_zone}}
+      OTHER_AVAILABILITY_ZONE:              {{other_availability_zone}}
+
+  - task: configure-masb
+    file: azure-tile-pipelines/tasks/config-product/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPS_MGR_USR: {{opsman_admin_username}}
+      OPS_MGR_PWD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
+
+- name: deploy-masb-old
+  serial: true
+  max_in_flight: 1
+  serial_groups: [full]
+
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-old
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+      passed: [configure-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: deploy-masb
+    file: pcf-pipelines/tasks/apply-changes/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      PRODUCT_NAME: azure-service-broker
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
+
+- name: upload-masb-new
+  serial_groups: [opsman]
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-new
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: upload-tile
+    file: pcf-pipelines/tasks/upload-product-and-stemcell/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      OPS_MGR_USR: {{opsman_admin_username}}
+      OPS_MGR_PWD: {{opsman_admin_password}}
+      PIVNET_API_TOKEN: {{pivnet_token}}
+      IAAS: "azure"
+      NO_PROXY: ""
+      OM_IP: ""
+
+  - task: stage-tile
+    file: pcf-pipelines/tasks/stage-product/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *delete-masb
+
+- name: configure-masb-new
+  serial: true
+  max_in_flight: 1
+  serial_groups: [full]
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-new
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+      passed: [upload-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: prepare-config
+    file: azure-tile-pipelines/meta-azure-service-broker/tasks/prepare-config/task.yml
+    params:
+      PRODUCT_VERSION:                      {{masb_new_version}}
+      AZURE_ENVIRONMENT:                    {{azure_environment}}
+      AZURE_TENANT_ID:                      {{azure_tenant_id}}
+      AZURE_SUBSCRIPTION_ID:                {{azure_subscription_id}}
+      AZURE_CLIENT_ID:                      {{azure_client_id}}
+      AZURE_CLIENT_SECRET:                  {{azure_client_secret}}
+      AZURE_BROKER_DATABASE_SERVER:         {{azure_broker_database_server}}
+      AZURE_BROKER_DATABASE_NAME:           {{azure_broker_database_name}}
+      AZURE_BROKER_DATABASE_USER:           {{azure_broker_database_user}}
+      AZURE_BROKER_DATABASE_PASSWORD:       {{azure_broker_database_password}}
+      AZURE_BROKER_DATABASE_ENCRYPTION_KEY: {{azure_broker_database_encryption_key}}
+      NETWORK:                              {{network}}
+      SINGLETON_AVAILABILITY_ZONE:          {{singleton_availability_zone}}
+      OTHER_AVAILABILITY_ZONE:              {{other_availability_zone}}
+
+  - task: configure-masb
+    file: azure-tile-pipelines/tasks/config-product/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPS_MGR_USR: {{opsman_admin_username}}
+      OPS_MGR_PWD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
+
+- name: deploy-masb-new
+  serial: true
+  max_in_flight: 1
+  serial_groups: [full]
+
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-new
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+      passed: [configure-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - task: deploy-masb
+    file: pcf-pipelines/tasks/apply-changes/task.yml
+    params:
+      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+      OPSMAN_USERNAME: {{opsman_admin_username}}
+      OPSMAN_PASSWORD: {{opsman_admin_password}}
+      OPSMAN_CLIENT_ID: ""
+      OPSMAN_CLIENT_SECRET: ""
+      PRODUCT_NAME: azure-service-broker
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
+
+- name: delete-masb
+  serial: true
+  max_in_flight: 1
+  serial_groups: [full]
+
+  plan:
+  - aggregate:
+    - get: pivnet-product
+      resource: pivnet-masb-new
+      params:
+        globs:
+        - "azure-service-broker*.pivotal"
+      trigger: true
+      passed: [deploy-masb]
+    - get: pcf-pipelines
+    - get: azure-tile-pipelines
+
+  - <<: *unstage-masb
+  - <<: *delete-masb
