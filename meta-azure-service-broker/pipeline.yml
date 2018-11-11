@@ -41,11 +41,32 @@ resources:
     product_version: {{masb_major_minor_version}}
     sort_by: semver
 
+shared:
+- &unstage-masb
+  task: unstage-masb
+  file: azure-tile-pipelines/tasks/unstage-product/task.yml
+  params:
+    OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+    OPS_MGR_USR: {{opsman_admin_username}}
+    OPS_MGR_PWD: {{opsman_admin_password}}
+    PRODUCT_NAME: azure-service-broker
+
+- &delete-masb
+  task: delete-masb
+  file: azure-tile-pipelines/tasks/delete-product/task.yml
+  params:
+    OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
+    OPS_MGR_USR: {{opsman_admin_username}}
+    OPS_MGR_PWD: {{opsman_admin_password}}
+    PRODUCT_NAME: azure-service-broker
+    PRODUCT_VERSION: 1.10.0
+
 jobs:
 - name: upload-masb
   serial_groups: [opsman]
   plan:
   - aggregate:
+    - get: azure-tile-pipelines
     - get: pcf-pipelines
     - get: pivnet-product
       resource: pivnet-masb
@@ -75,6 +96,9 @@ jobs:
       OPSMAN_CLIENT_SECRET: ""
       OPSMAN_USERNAME: {{opsman_admin_username}}
       OPSMAN_PASSWORD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *delete-masb
 
 - name: configure-masb
   serial: true
@@ -110,6 +134,10 @@ jobs:
       OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
       OPS_MGR_USR: {{opsman_admin_username}}
       OPS_MGR_PWD: {{opsman_admin_password}}
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
 
 - name: deploy-masb
   serial: true
@@ -118,6 +146,7 @@ jobs:
 
   plan:
   - aggregate:
+    - get: azure-tile-pipelines
     - get: pcf-pipelines
       passed: [configure-masb]
       trigger: true
@@ -131,6 +160,10 @@ jobs:
       OPSMAN_CLIENT_ID: ""
       OPSMAN_CLIENT_SECRET: ""
       PRODUCT_NAME: azure-service-broker
+    on_failure:
+      do:
+        - <<: *unstage-masb
+        - <<: *delete-masb
 
 - name: delete-masb
   serial: true
@@ -144,19 +177,5 @@ jobs:
       passed: [deploy-masb]
       trigger: true
 
-  - task: unstage-masb
-    file: azure-tile-pipelines/tasks/unstage-product/task.yml
-    params:
-      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
-      OPS_MGR_USR: {{opsman_admin_username}}
-      OPS_MGR_PWD: {{opsman_admin_password}}
-      PRODUCT_NAME: azure-service-broker
-
-  - task: delete-masb
-    file: azure-tile-pipelines/tasks/delete-product/task.yml
-    params:
-      OPSMAN_DOMAIN_OR_IP_ADDRESS: {{opsman_domain_or_ip_address}}
-      OPS_MGR_USR: {{opsman_admin_username}}
-      OPS_MGR_PWD: {{opsman_admin_password}}
-      PRODUCT_NAME: azure-service-broker
-      PRODUCT_VERSION: 1.10.0
+  - <<: *unstage-masb
+  - <<: *delete-masb
